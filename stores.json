@@ -1,0 +1,1 @@
+[{"id":"s1","name":"店铺 1","params":{"packFee":2,"couponTh":28,"couponAmt":9,"subsidy":4.58,"techRate":1,"partnerRate":11,"partnerMin":1.5,"basePrice":3,"priceRate":0.14,"priceFloor":20,"priceCap":50,"delivDisc":91.09,"feeCap":20},"ui":{"mode":"rev","revTarget":"10","fwdPrice":"28.8","revDist":"2.5","revTime":"0","fwdDist":"2.5","fwdTime":"0"}}]

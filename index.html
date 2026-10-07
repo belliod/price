@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>美团到手价↔原价 双向计算器 · 多店铺版</title>
+<style>
+  :root{
+    --orange:#ff6a00; --orange-d:#e85d00; --orange-bg:#fff3e8;
+    --teal:#0aa1a0; --teal-bg:#e8f7f7;
+    --bg:#f6f8fa; --card:#fff; --line:#e5e6eb;
+    --txt:#1f2329; --sub:#6b7280;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--txt);padding:16px;line-height:1.6}
+  .wrap{max-width:960px;margin:0 auto}
+  header{background:linear-gradient(135deg,#ff6a00,#ff9a3d);border-radius:14px;padding:20px 24px;color:#fff;margin-bottom:16px}
+  header h1{font-size:20px;font-weight:700}
+  header p{font-size:13px;opacity:.94;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+  .card h2{font-size:15px;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .card h2 .tag{font-size:11px;background:var(--orange-bg);color:var(--orange-d);padding:2px 8px;border-radius:20px;font-weight:600}
+  .mini-btn{font-size:11px;background:var(--card);border:1px solid var(--line);color:var(--sub);padding:3px 10px;border-radius:20px;cursor:pointer;margin-left:auto}
+  .mini-btn:hover{color:var(--orange-d);border-color:var(--orange)}
+  /* 店铺管理条 */
+  .store-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px}
+  .store-tabs{display:flex;gap:8px;flex-wrap:wrap;flex:1;min-width:0}
+  .store-tab{display:flex;align-items:center;gap:2px;background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:5px 6px 5px 10px;cursor:pointer;transition:all .15s}
+  .store-tab:hover{border-color:var(--orange)}
+  .store-tab.on{background:var(--orange-bg);border-color:var(--orange)}
+  .store-name{font-size:14px;font-weight:600;color:var(--txt);border:none;outline:none;background:transparent;padding:2px 4px;border-radius:6px;min-width:36px;max-width:220px}
+  .store-tab.on .store-name{color:var(--orange-d)}
+  .store-name:focus{background:#fff;box-shadow:0 0 0 2px var(--orange-bg);cursor:text}
+  .store-del{width:20px;height:20px;border:none;background:transparent;color:var(--sub);font-size:14px;line-height:1;border-radius:50%;cursor:pointer;flex:none}
+  .store-del:hover{background:var(--orange);color:#fff}
+  .add-btn{background:var(--orange);color:#fff;border:none;border-radius:10px;padding:8px 16px;font-size:14px;font-weight:600;cursor:pointer;flex:none}
+  .add-btn:hover{background:var(--orange-d)}
+  .store-hint{font-size:12px;color:var(--sub);width:100%;margin-top:2px}
+  .tabs{display:flex;gap:8px;margin-bottom:14px}
+  .tab{flex:1;text-align:center;padding:11px;border-radius:10px;background:var(--card);border:1.5px solid var(--line);cursor:pointer;font-size:15px;font-weight:600;color:var(--sub)}
+  .tab.on{background:var(--orange-bg);border-color:var(--orange);color:var(--orange-d)}
+  .inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+  .field label{display:block;font-size:12px;color:var(--sub);margin-bottom:5px}
+  .field input,.field select{width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:16px;outline:none}
+  .field input:focus,.field select:focus{border-color:var(--orange)}
+  .big-input{font-size:22px!important;font-weight:700;text-align:center;color:var(--orange-d);background:var(--orange-bg)!important;border-color:var(--orange)!important}
+  .hint{font-size:12px;color:var(--sub);margin-top:7px}
+  .results{margin-top:14px}
+  .soltip{background:#fffbe6;border:1px solid #ffe58f;border-radius:10px;padding:10px 14px;font-size:13px;color:#8c6d1f;margin-bottom:12px;display:none}
+  .sol{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+  .sol-card{flex:1;min-width:280px;border-radius:12px;border:1.5px solid var(--line);padding:14px;background:#fff}
+  .sol-card.teal{border-color:var(--teal);background:var(--teal-bg)}
+  .sol-card.orange{border-color:var(--orange);background:var(--orange-bg)}
+  .sol-card .branch{font-size:12px;font-weight:700;margin-bottom:2px}
+  .sol-card.teal .branch{color:var(--teal)} .sol-card.orange .branch{color:var(--orange-d)}
+  .sol-card .price{font-size:32px;font-weight:800;line-height:1.2}
+  .sol-card.teal .price{color:var(--teal)} .sol-card.orange .price{color:var(--orange-d)}
+  .sol-card .sub{font-size:12px;color:var(--sub);margin-top:2px}
+  .detail{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px;font-size:12.5px;color:var(--sub)}
+  .detail .row{display:flex;justify-content:space-between;padding:2px 0}
+  .detail .row b{color:var(--txt);font-weight:600}
+  .detail .row.hl{color:var(--orange-d);font-weight:700;border-top:1px solid var(--line);margin-top:4px;padding-top:5px}
+  .none{text-align:center;color:var(--sub);font-size:13px;padding:20px 0;display:none}
+  .params{background:#fbfcfe}
+  .params .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-top:10px}
+  .params .p{display:flex;flex-direction:column;gap:3px}
+  .params .p label{font-size:12px;color:var(--sub)}
+  .params .p input{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:7px;text-align:right;font-size:14px;outline:none}
+  .params .p input:focus{border-color:var(--orange)}
+  .params .p .unit{font-size:11px;color:var(--sub);text-align:right;margin-top:-2px}
+  table.qt{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+  table.qt th,table.qt td{border:1px solid var(--line);padding:5px 8px;text-align:right}
+  table.qt th:first-child,table.qt td:first-child{text-align:left}
+  table.qt th{background:#fafafa;font-weight:600}
+  footer{font-size:11.5px;color:var(--sub);text-align:center;margin:10px 0 20px}
+  @media(max-width:620px){.sol-card{min-width:100%} header h1{font-size:17px}}
+</style></head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>美团 到手价 ↔ 原价 双向计算器 · 多店铺版</h1>
+    <p>点「添加店铺」即可新增一家店；每家店独立一套扣费参数和备注名称，互不影响，价格算法全店一致。支持正向(原价→到手)与反向(到手→原价)双向。</p>
+  </header>
+
+  <!-- 店铺管理 -->
+  <div class="card store-bar">
+    <div class="store-tabs" id="storeTabs"></div>
+    <button class="add-btn" id="addStoreBtn">＋ 添加店铺</button>
+    <div class="store-hint">点击店铺名称可直接修改备注；点名称旁的 × 删除该店。数据自动保存在网页同目录的 stores.json 文件中（方便群晖 Web Station 直接部署）；服务器不可写时自动降级为浏览器本地保存。</div>
+    <div class="store-hint" id="saveHint" style="color:var(--teal);font-weight:600"></div>
+  </div>
+
+  <!-- 当前店铺参数 -->
+  <div class="card params">
+    <h2>🏪 店铺扣费参数 <span class="tag" id="curStoreTag">当前店铺</span>
+      <button class="mini-btn" onclick="resetParams()">恢复默认参数</button>
+    </h2>
+    <div class="hint">以下为本店的独立参数，改动任意一项即时全量重算，只影响本店。</div>
+    <div class="grid" id="paramGrid"></div>
+  </div>
+
+  <!-- 计算 -->
+  <div class="card">
+    <h2>🧮 计算模式 <span class="tag">切换方向</span></h2>
+    <div class="tabs">
+      <div class="tab on" id="tabRev" onclick="setMode('rev')">到手价 → 反推原价</div>
+      <div class="tab" id="tabFwd" onclick="setMode('fwd')">原价 → 算出到手价</div>
+    </div>
+
+    <div id="boxRev">
+      <div class="inputs">
+        <div class="field">
+          <label>目标到手价（元）</label>
+          <input class="big-input" type="number" id="revTarget" value="10" step="0.01" min="0" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label>配送距离</label>
+          <select id="revDist">
+            <option value="2.5" selected>≤2.5 km</option>
+            <option value="3">3 km</option>
+            <option value="4">4 km</option>
+            <option value="5">5 km</option>
+            <option value="6">6 km</option>
+            <option value="8">8 km</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>时段</label>
+          <select id="revTime">
+            <option value="0" selected>白天</option>
+            <option value="0.5">晚高峰21–24点(+0.5)</option>
+            <option value="1">深夜0–6点(+1.0)</option>
+          </select>
+        </div>
+      </div>
+      <div class="hint">神券门槛会造成“双解”：同一到手价有“不触发神券的低价”和“触发神券的高价”两条路径，会同时列出并解释。</div>
+      <div class="results" id="revResults"></div>
+    </div>
+
+    <div id="boxFwd" style="display:none">
+      <div class="inputs">
+        <div class="field">
+          <label>商品原价（元）</label>
+          <input class="big-input" type="number" id="fwdPrice" value="28.8" step="0.01" min="0" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label>配送距离</label>
+          <select id="fwdDist">
+            <option value="2.5" selected>≤2.5 km</option>
+            <option value="3">3 km</option>
+            <option value="4">4 km</option>
+            <option value="5">5 km</option>
+            <option value="6">6 km</option>
+            <option value="8">8 km</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>时段</label>
+          <select id="fwdTime">
+            <option value="0" selected>白天</option>
+            <option value="0.5">晚高峰21–24点(+0.5)</option>
+            <option value="1">深夜0–6点(+1.0)</option>
+          </select>
+        </div>
+      </div>
+      <div class="results" id="fwdResults"></div>
+    </div>
+  </div>
+
+  <!-- 曲线 -->
+  <div class="card">
+    <h2>📈 原价 ↔ 到手价曲线 <span class="tag">按本店参数</span></h2>
+    <canvas id="chart" style="width:100%;height:300px"></canvas>
+    <div class="hint">神券门槛处到手价出现断崖（突然少神券金额）。实心点为当前反推结果。</div>
+  </div>
+
+  <!-- 速查 -->
+  <div class="card">
+    <h2>⚡ 反向定价速查 <span class="tag">白天 · ≤2.5km · 按本店参数</span></h2>
+    <table class="qt" id="quickTable"></table>
+    <div class="hint">快速估价用；精确值请在“到手价→原价”中输入。</div>
+  </div>
+
+  <footer>规则来源：美团代理商城市服务费截图 · 参数全自定义 v3.0 · 数据存于网页同目录 stores.json · 群晖可直接部署 · 无需联网，双击即用</footer>
+</div>
+<script>
+// ============ 店铺参数定义（默认参考值，每家店各自一份） ============
+var PARAM_DEFS = [
+  ["packFee",    "打包费(元)",            "2",    "元"],
+  ["couponTh",   "神券门槛(原价元)",      "28",   "元"],
+  ["couponAmt",  "神券金额(商家承担元)",  "9",    "元"],
+  ["subsidy",    "商家给顾客补贴(元)",    "4.58", "元"],
+  ["techRate",   "平台技术服务费率(%)",   "1",    "%"],
+  ["partnerRate","合作商服务费率(%)",     "11",   "%"],
+  ["partnerMin", "合作商服务费保底(元)",  "1.5",  "元"],
+  ["basePrice",  "配送起步价0-2.5km(元)", "3",    "元"],
+  ["priceRate",  "价格收费·每1元(元)",    "0.14", "元"],
+  ["priceFloor", "价格收费起征点(元)",    "20",   "元"],
+  ["priceCap",   "价格收费封顶(元)",      "50",   "元"],
+  ["delivDisc",  "配送服务费折扣(%)",     "91.09","%"],
+  ["feeCap",     "配送费封顶比例(%)",     "20",   "%"]
+];
+var TIME_FEES = { "0": 0, "0.5": 0.5, "1": 1.0 };
+var STORE_KEY = "mt_calc_stores_v1";   // 服务器不可写时的降级备份（浏览器本地）
+var DATA_URL = "api.php";              // 与网页同目录的读写接口
+var storageMode = "server";            // server | local
+var saveTimer = null;
+
+// ---------- 店铺数据层（每家店独立） ----------
+function defaultParams(){
+  var p = {};
+  PARAM_DEFS.forEach(function(d){ p[d[0]] = parseFloat(d[2]); });
+  return p;
+}
+function defaultUI(){
+  return { mode: "rev", revTarget: "10", fwdPrice: "28.8", revDist: "2.5", revTime: "0", fwdDist: "2.5", fwdTime: "0" };
+}
+function newStore(name){
+  return { id: "s" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+           name: name || "店铺", params: defaultParams(), ui: defaultUI() };
+}
+
+var stores = [], activeId = null;
+
+function sanitizeStore(s){
+  var d = defaultParams(), u = defaultUI();
+  if (!s.params) s.params = d;
+  else for (var k in d) if (!(k in s.params) || isNaN(parseFloat(s.params[k]))) s.params[k] = d[k];
+  if (!s.ui) s.ui = u;
+  else for (var k2 in u) if (!(k2 in s.ui)) s.ui[k2] = u[k2];
+  if (!s.id) s.id = newStore("").id;
+  if (!s.name) s.name = "店铺";
+  return s;
+}
+function loadData(){
+  return fetch(DATA_URL + "?action=load&t=" + Date.now(), { cache: "no-store" })
+    .then(function(r){ if (!r.ok) throw new Error("http" + r.status); return r.json(); })
+    .catch(function(){
+      storageMode = "local";
+      try { return JSON.parse(localStorage.getItem(STORE_KEY)); } catch (e) { return null; }
+    });
+}
+function loadStores(){
+  return loadData().then(function(arr){
+    if (!arr || !arr.length) arr = [newStore("店铺 1")];
+    arr = arr.map(sanitizeStore);
+    stores = arr;
+    activeId = stores[0].id;
+    scheduleSave();
+  });
+}
+function setSaveHint(txt){
+  var el = document.getElementById("saveHint");
+  if (el) el.textContent = txt;
+}
+function localSave(payload){
+  try { localStorage.setItem(STORE_KEY, payload); } catch (e) {}
+  setSaveHint("服务器文件不可写，已自动改用浏览器本地保存");
+}
+function scheduleSave(){
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(doSave, 400);
+}
+function doSave(){
+  var payload = JSON.stringify(stores);
+  if (storageMode === "server") {
+    fetch(DATA_URL + "?action=save", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload })
+      .then(function(r){ if (r.ok) setSaveHint("已保存到网页同目录 stores.json"); else { storageMode = "local"; localSave(payload); } })
+      .catch(function(){ storageMode = "local"; localSave(payload); });
+  } else {
+    localSave(payload);
+  }
+}
+function findStore(id){ for (var i = 0; i < stores.length; i++) if (stores[i].id === id) return stores[i]; return null; }
+function activeStore(){ return findStore(activeId) || stores[0]; }
+
+function esc(t){ return String(t).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+// ---------- 店铺管理 ----------
+function addStore(){
+  var s = newStore("店铺 " + (stores.length + 1));
+  stores.push(s);
+  activeId = s.id;
+  scheduleSave();
+  renderStoreTabs();
+  activate();
+}
+function switchStore(id){
+  if (id === activeId) return;
+  activeId = id;
+  scheduleSave();
+  activate();
+}
+function removeStore(id, ev){
+  if (ev) ev.stopPropagation();
+  var s = findStore(id);
+  if (!s) return;
+  if (!confirm('删除店铺「' + s.name + '」？该店的参数与备注将一并移除。')) return;
+  stores = stores.filter(function(x){ return x.id !== id; });
+  if (!stores.length) stores.push(newStore("店铺 1"));
+  if (activeId === id) activeId = stores[0].id;
+  scheduleSave();
+  renderStoreTabs();
+  activate();
+}
+function renameStore(id, input){
+  var s = findStore(id);
+  if (!s) return;
+  input.size = Math.max(3, input.value.length + 2);
+  s.name = input.value.trim() || "未命名";
+  scheduleSave();
+  if (activeId === id) document.getElementById("curStoreTag").textContent = s.name;
+}
+function renderStoreTabs(){
+  var box = document.getElementById("storeTabs");
+  var html = "";
+  stores.forEach(function(s){
+    var on = s.id === activeId ? " on" : "";
+    var size = Math.max(3, s.name.length + 2);
+    html += '<div class="store-tab' + on + '" data-id="' + s.id + '" onclick="switchStore(\'' + s.id + '\')">' +
+      '<input class="store-name" value="' + esc(s.name) + '" size="' + size + '" title="点击修改店铺备注" ' +
+      'onmousedown="event.stopPropagation()" onclick="event.stopPropagation()" ' +
+      'oninput="renameStore(\'' + s.id + '\', this)">' +
+      '<button class="store-del" title="删除该店铺" onclick="removeStore(\'' + s.id + '\', event)">×</button>' +
+      '</div>';
+  });
+  box.innerHTML = html;
+}
+
+// ---------- 参数面板（绑定到当前店铺） ----------
+function buildParams(){
+  var s = activeStore(), box = document.getElementById("paramGrid");
+  box.innerHTML = PARAM_DEFS.map(function(d){
+    return '<div class="p"><label>' + d[1] + '</label>' +
+      '<input type="number" step="any" id="p_' + d[0] + '" value="' + s.params[d[0]] + '" onchange="paramChange(\'' + d[0] + '\', this)">' +
+      '<span class="unit">' + d[3] + '</span></div>';
+  }).join("");
+}
+function paramChange(key, el){
+  var s = activeStore();
+  var v = parseFloat(el.value);
+  if (isNaN(v)) v = 0;
+  s.params[key] = v;
+  el.value = v;
+  scheduleSave();
+  refresh();
+}
+function resetParams(){
+  if (!confirm("将该店铺全部参数恢复为默认参考值？")) return;
+  activeStore().params = defaultParams();
+  scheduleSave();
+  buildParams();
+  refresh();
+}
+
+// ---------- 计算核心（与单店铺版完全一致，纯函数，全店共用） ----------
+function readP(){
+  var P = {};
+  PARAM_DEFS.forEach(function(d){
+    var v = activeStore().params[d[0]];
+    if (isNaN(v)) v = parseFloat(d[2]);
+    P[d[0]] = v;
+  });
+  P.techRate = P.techRate / 100;
+  P.partnerRate = P.partnerRate / 100;
+  P.delivDisc = P.delivDisc / 100;
+  P.feeCap = P.feeCap / 100;
+  return P;
+}
+
+function r2(x){ return Math.round((x + 1e-9) * 100) / 100; }
+
+// 正向：原价 -> 各费用与到手价
+function calc(P, price, distKm, timeFee){
+  var base = price + P.packFee;
+  var coupon = price >= P.couponTh ? P.couponAmt : 0;
+  var tech = r2(base * P.techRate);
+  var agent = Math.max(r2(base * P.partnerRate), P.partnerMin);
+  var excess = Math.max(base - P.priceFloor, 0);
+  var priceFee = excess > 0 ? Math.min(Math.ceil(excess) * P.priceRate, P.priceCap) : 0;
+  var distFee;
+  if (distKm === null || distKm === undefined) distFee = P.basePrice;
+  else if (distKm <= 2.5) distFee = P.basePrice;
+  else if (distKm <= 5) distFee = P.basePrice + Math.ceil((distKm - 2.5) * 10) * 0.07;
+  else distFee = P.basePrice + 25 * 0.07 + Math.ceil((distKm - 5) * 10) * 0.12;
+  var gross = distFee + priceFee + (timeFee || 0);
+  var fee = r2(gross * P.delivDisc);
+  var cap = r2(base * P.feeCap);
+  fee = Math.min(fee, cap);
+  var income = r2(price + P.packFee - coupon - P.subsidy - tech - agent - fee);
+  return { price: price, base: r2(base), coupon: coupon, subsidy: P.subsidy, tech: tech,
+           agent: agent, priceFee: r2(priceFee), distFee: r2(distFee), fee: fee, cap: cap,
+           income: income, incomeRate: price ? (income / price * 100).toFixed(1) : 0 };
+}
+
+// 反向：扫描两个分支（阶梯费率下取最接近解）
+function solveReverse(P, target, distKm, timeFee){
+  var sols = [], th = P.couponTh;
+  var best = null, p;
+  for (p = 0; p <= th - 0.001; p = r2(p + 0.01)) {
+    var inc = calc(P, p, distKm, timeFee).income;
+    var d = Math.abs(inc - target);
+    if (!best || d < best.d) best = { d: d, p: p, inc: inc };
+  }
+  if (best && best.d <= 0.011) sols.push({ price: best.p, income: best.inc, branch: "below" });
+  var pmax = Math.min(2000, Math.max(300, target * 3 + 100));
+  best = null;
+  for (p = th; p <= pmax + 0.001; p = r2(p + 0.01)) {
+    var inc2 = calc(P, p, distKm, timeFee).income;
+    var d2 = Math.abs(inc2 - target);
+    if (!best || d2 < best.d) best = { d: d2, p: p, inc: inc2 };
+  }
+  if (best && best.d <= 0.011) sols.push({ price: best.p, income: best.inc, branch: "above" });
+  return sols;
+}
+// ---------- 渲染 ----------
+function setMode(m){
+  var s = activeStore();
+  s.ui.mode = m;
+  document.getElementById("tabRev").className = "tab" + (m === "rev" ? " on" : "");
+  document.getElementById("tabFwd").className = "tab" + (m === "fwd" ? " on" : "");
+  document.getElementById("boxRev").style.display = m === "rev" ? "" : "none";
+  document.getElementById("boxFwd").style.display = m === "fwd" ? "" : "none";
+  scheduleSave();
+  refresh();
+}
+
+function fmt(x){ return (Math.round(x * 100) / 100).toFixed(2); }
+
+function detailRows(c){
+  var P = readP();
+  var isMin = (c.base * P.partnerRate < P.partnerMin);
+  var rows = [
+    ["商品原价", "¥" + fmt(c.price), "c"],
+    ["+ 打包费", "¥" + fmt(c.base - c.price), ""],
+    ["收费基数", "¥" + fmt(c.base), "b"],
+    ["神券商家承担", "- ¥" + fmt(c.coupon), c.coupon > 0 ? "coupon" : ""],
+    ["商家配送补贴", "+ ¥" + fmt(c.subsidy), ""],
+    ["平台技术服务费", "- ¥" + fmt(c.tech), ""],
+    ["合作商运营服务费", "- ¥" + fmt(c.agent), isMin ? "min" : ""],
+    ["配送服务费", "- ¥" + fmt(c.fee), ""]
+  ];
+  rows.push(["到手价", "¥" + fmt(c.income), "hl"]);
+  return rows;
+}
+
+function cell(r){
+  if (r[2] === "b") return '<div class="row" style="border-top:1px solid var(--line);margin-top:4px;padding-top:4px"><span>收费基数</span><b>' + r[1] + '</b></div>';
+  if (r[2] === "hl") return '<div class="row hl"><span>到手价</span><span>' + r[1] + '</span></div>';
+  if (r[2] === "coupon") return '<div class="row"><span>' + r[0] + ' <span style="color:#e34848">(触发)</span></span><b>' + r[1] + '</b></div>';
+  if (r[2] === "min") return '<div class="row"><span>' + r[0] + ' <span style="color:#e34848">(保底)</span></span><b>' + r[1] + '</b></div>';
+  return '<div class="row"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>';
+}
+
+function renderRev(){
+  var s = activeStore(), box = document.getElementById("revResults");
+  var target = parseFloat(s.ui.revTarget);
+  var dist = parseFloat(s.ui.revDist);
+  var tf = TIME_FEES[s.ui.revTime] || 0;
+  var P = readP();
+  if (isNaN(target) || target < 0){ box.innerHTML = ""; return; }
+  var sols = solveReverse(P, target, dist, tf);
+  var minIncome = calc(P, 0, dist, tf).income;
+  var html = "";
+  if (sols.length === 0) {
+    html += '<div class="none" style="display:block">该到手价在当前参数下无法实现：' +
+      (target < minIncome ? '当前结构下最低到手为 ' + fmt(minIncome) + ' 元，请提高目标或改低费率/补贴。' : '任何原价都达不到 ' + fmt(target) + ' 元到手。') + '</div>';
+  } else {
+    if (sols.length === 2) {
+      html += '<div class="soltip" style="display:block">⚠ 该到手价有<b>两种定价路径</b>：神券前标价低、不触发神券，更易转化；神券后标价高、触发' + fmt(P.couponTh) + '元神券（商家承担' + fmt(P.couponAmt) + '元），适合冲客单价/凑单。两者到手利润一致。</div>';
+    }
+    var names = { below: ["神券前定价 · 不触发神券（< " + fmt(P.couponTh) + " 元）", "teal"], above: ["神券后定价 · 触发神券（≥ " + fmt(P.couponTh) + " 元）", "orange"] };
+    for (var i = 0; i < sols.length; i++) {
+      var so = sols[i], c = calc(P, so.price, dist, tf);
+      var nm = names[so.branch];
+      html += '<div class="sol"><div class="sol-card ' + nm[1] + '">' +
+        '<div class="branch">' + nm[0] + '</div>' +
+        '<div class="price">¥' + fmt(so.price) + '</div>' +
+        '<div class="sub">实际到手 ¥' + fmt(c.income) + '（误差 ' + fmt(Math.abs(c.income - target)) + '）· 到手率 ' + c.incomeRate + '%</div>' +
+        '<div class="detail">' + detailRows(c).map(cell).join("") + '</div></div></div>';
+    }
+  }
+  box.innerHTML = html;
+  drawChart(P, sols, target, dist, tf);
+}
+
+function renderFwd(){
+  var s = activeStore(), box = document.getElementById("fwdResults");
+  var price = parseFloat(s.ui.fwdPrice);
+  var dist = parseFloat(s.ui.fwdDist);
+  var tf = TIME_FEES[s.ui.fwdTime] || 0;
+  var P = readP();
+  if (isNaN(price) || price < 0){ box.innerHTML = ""; return; }
+  var c = calc(P, price, dist, tf);
+  var html = '<div class="sol"><div class="sol-card orange">' +
+    '<div class="branch">商品原价 ' + fmt(price) + ' 元 → 到手价</div>' +
+    '<div class="price">¥' + fmt(c.income) + '</div>' +
+    '<div class="sub">到手率 ' + c.incomeRate + '%' + (c.coupon > 0 ? ' · 已触发神券' : ' · 未触发神券') + '</div>' +
+    '<div class="detail">' + detailRows(c).map(cell).join("") + '</div></div></div>';
+  box.innerHTML = html;
+  drawChart(P, [{ price: price, income: c.income, branch: c.coupon > 0 ? "above" : "below" }], c.income, dist, tf);
+}
+
+function renderQuick(){
+  var tbl = document.getElementById("quickTable");
+  var P = readP(), dist = 2.5, tf = 0;
+  var rows = ["<tr><th>目标到手价</th><th>神券前原价（&lt;" + P.couponTh + "元）</th><th>神券后原价（≥" + P.couponTh + "元）</th></tr>"];
+  var vals = [5, 8, 10, 12, 15, 17.8, 20, 25, 30, 35, 40, 45, 50];
+  for (var i = 0; i < vals.length; i++) {
+    var sols = solveReverse(P, vals[i], dist, tf);
+    var below = "", above = "";
+    for (var j = 0; j < sols.length; j++) {
+      if (sols[j].branch === "below") below = "¥" + fmt(sols[j].price);
+      else above = "¥" + fmt(sols[j].price);
+    }
+    rows.push("<tr><td>¥" + vals[i] + "</td><td>" + (below || "—") + "</td><td>" + (above || "—") + "</td></tr>");
+  }
+  tbl.innerHTML = rows.join("");
+}
+
+// ---------- 曲线 ----------
+function drawChart(P, sols, target, distKm, timeFee){
+  var cv = document.getElementById("chart");
+  if (!cv || !cv.getContext) return;
+  var dpr = window.devicePixelRatio || 1;
+  var W = cv.parentElement.clientWidth || 700, H = 300;
+  cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + "px"; cv.style.height = H + "px";
+  var ctx = cv.getContext("2d"); ctx.scale(dpr, dpr); ctx.clearRect(0, 0, W, H);
+  var padL = 46, padR = 14, padT = 16, padB = 30;
+  var iw = W - padL - padR, ih = H - padT - padB;
+  var th = P.couponTh;
+  var xMax = Math.max(150, th + 60), yMax = 0;
+  for (var p = 0; p <= xMax; p += 1) yMax = Math.max(yMax, calc(P, p, distKm || 2.5, timeFee || 0).income);
+  yMax = Math.ceil(yMax / 10) * 10 || 10;
+  function X(p){ return padL + iw * p / xMax; }
+  function Y(v){ return padT + ih * (1 - v / yMax); }
+  ctx.strokeStyle = "#eef0f2"; ctx.lineWidth = 1;
+  for (var g = 0; g <= yMax; g += Math.max(10, Math.ceil(yMax / 6 / 10) * 10)) {
+    ctx.beginPath(); ctx.moveTo(padL, Y(g)); ctx.lineTo(W - padR, Y(g)); ctx.stroke();
+    ctx.fillStyle = "#9aa0a6"; ctx.font = "10px sans-serif"; ctx.textAlign = "right";
+    ctx.fillText(g, padL - 6, Y(g) + 3);
+  }
+  for (var gx = 0; gx <= xMax; gx += 25) {
+    ctx.beginPath(); ctx.moveTo(X(gx), padT); ctx.lineTo(X(gx), H - padB); ctx.stroke();
+    ctx.fillStyle = "#9aa0a6"; ctx.textAlign = "center";
+    ctx.fillText(gx, X(gx), H - padB + 14);
+  }
+  ctx.fillStyle = "#9aa0a6"; ctx.textAlign = "left"; ctx.font = "11px sans-serif";
+  ctx.fillText("商品原价（元）", padL + iw / 2 - 40, H - 4);
+  ctx.strokeStyle = "#ffb26b"; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(X(th), padT); ctx.lineTo(X(th), H - padB); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = "#ff6a00"; ctx.font = "11px sans-serif"; ctx.textAlign = "center";
+  ctx.fillText("神券门槛 " + th + " 元", X(th), padT - 4);
+  function plot(from, to, color){
+    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath();
+    var first = true;
+    for (var p = from; p <= to + 0.001; p += 0.5) {
+      var v = calc(P, p, distKm || 2.5, timeFee || 0).income;
+      var xx = X(p), yy = Y(v);
+      if (first){ ctx.moveTo(xx, yy); first = false; } else ctx.lineTo(xx, yy);
+    }
+    ctx.stroke();
+  }
+  plot(0, th - 0.01, "#0aa1a0");
+  plot(th, xMax, "#ff6a00");
+  if (sols) {
+    for (var i = 0; i < sols.length; i++) {
+      var so = sols[i];
+      if (so.price > xMax) continue;
+      var col = so.branch === "below" ? "#0aa1a0" : "#ff6a00";
+      ctx.fillStyle = col; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(X(so.price), Y(so.income), 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = col; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("¥" + fmt(so.price), X(so.price), Y(so.income) - 10);
+    }
+  }
+  if (typeof target === "number" && target <= yMax) {
+    ctx.strokeStyle = "#e34848"; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(padL, Y(target)); ctx.lineTo(W - padR, Y(target)); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+// ---------- 激活店铺：恢复该店参数与界面状态 ----------
+function activate(){
+  var s = activeStore();
+  document.getElementById("curStoreTag").textContent = s.name;
+  renderStoreTabs();
+  buildParams();
+  document.getElementById("revTarget").value = s.ui.revTarget;
+  document.getElementById("fwdPrice").value = s.ui.fwdPrice;
+  document.getElementById("revDist").value = s.ui.revDist;
+  document.getElementById("revTime").value = s.ui.revTime;
+  document.getElementById("fwdDist").value = s.ui.fwdDist;
+  document.getElementById("fwdTime").value = s.ui.fwdTime;
+  setMode(s.ui.mode);
+}
+
+// ---------- 主流程 ----------
+function refresh(){
+  renderRev();
+  renderFwd();
+  renderQuick();
+}
+
+function bindInputs(){
+  document.getElementById("revTarget").addEventListener("input", function(){ activeStore().ui.revTarget = this.value; scheduleSave(); refresh(); });
+  document.getElementById("fwdPrice").addEventListener("input", function(){ activeStore().ui.fwdPrice = this.value; scheduleSave(); refresh(); });
+  document.getElementById("revDist").addEventListener("change", function(){ activeStore().ui.revDist = this.value; scheduleSave(); refresh(); });
+  document.getElementById("revTime").addEventListener("change", function(){ activeStore().ui.revTime = this.value; scheduleSave(); refresh(); });
+  document.getElementById("fwdDist").addEventListener("change", function(){ activeStore().ui.fwdDist = this.value; scheduleSave(); refresh(); });
+  document.getElementById("fwdTime").addEventListener("change", function(){ activeStore().ui.fwdTime = this.value; scheduleSave(); refresh(); });
+  document.getElementById("addStoreBtn").addEventListener("click", addStore);
+}
+
+loadStores().then(function(){
+  bindInputs();
+  renderStoreTabs();
+  activate();
+});
+window.addEventListener("resize", function(){ var P = readP(); drawChart(P, null, null, 2.5, 0); });
+</script>
+</body>
+</html>
