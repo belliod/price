@@ -408,7 +408,10 @@ function renameStoreId(id, input){
   input.size = Math.max(3, v.length + 2);
   scheduleSave();
   renderStoreTabs();
-  if (activeId === v) document.getElementById("curStoreTag").textContent = s.name;
+  if (activeId === v) {
+    document.getElementById("curStoreTag").textContent = s.name;
+    document.getElementById("curStoreIdInput").value = v;
+  }
 }
 function renderStoreTabs(){
   var box = document.getElementById("storeTabs");
@@ -429,6 +432,9 @@ function renderStoreTabs(){
       '<input class="store-name" value="' + esc(s.name) + '" size="' + size + '" title="点击修改店铺备注" ' +
       'onmousedown="event.stopPropagation()" onclick="event.stopPropagation()" ' +
       'oninput="renameStore(\'' + s.id + '\', this)">' +
+      '<input class="store-id" value="' + esc(s.id) + '" size="' + Math.max(3, s.id.length + 2) + '" title="点击修改店铺ID（字母/数字/下划线/中划线）" ' +
+      'onmousedown="event.stopPropagation()" onclick="event.stopPropagation()" ' +
+      'onchange="renameStoreId(\'' + s.id + '\', this)">' +
 
       '</div>' +
       '<button class="store-del" title="删除该店铺" onclick="removeStore(\'' + s.id + '\', event)">×</button>' +
