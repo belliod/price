@@ -39,7 +39,8 @@
   .store-search:focus{border-color:var(--orange)}
   .store-count{font-size:11.5px;color:var(--sub);width:100%;margin-top:2px}
   .store-info{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:0}
-  .store-id{font-size:10px;color:var(--sub);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2}
+  .store-id{font-size:10px;color:var(--sub);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2;border:none;outline:none;background:transparent;padding:0 2px;border-radius:4px;min-width:28px}
+.store-id:focus{background:#fff;box-shadow:0 0 0 2px var(--orange-bg);cursor:text}
   .store-empty{padding:8px 14px;color:var(--sub);font-size:13px}
   .store-hint{font-size:12px;color:var(--sub);width:100%;margin-top:2px}
   .tabs{display:flex;gap:8px;margin-bottom:14px}
@@ -385,6 +386,25 @@ function renameStore(id, input){
   scheduleSave();
   if (activeId === id) document.getElementById("curStoreTag").textContent = s.name;
 }
+function renameStoreId(id, input){
+  var s = findStore(id);
+  if (!s) return;
+  var v = input.value.trim();
+  if (!v) { alert("店铺ID不能为空"); input.value = s.id; return; }
+  if (!/^[A-Za-z0-9_-]+$/.test(v)) { alert("店铺ID只能包含字母、数字、下划线(_)、中划线(-)"); input.value = s.id; return; }
+  if (v !== id) {
+    for (var i = 0; i < stores.length; i++) {
+      if (stores[i].id === v) { alert("店铺ID「" + v + "」已存在，请换一个"); input.value = s.id; return; }
+    }
+  }
+  s.id = v;
+  if (activeId === id) activeId = v;
+  input.value = v;
+  input.size = Math.max(3, v.length + 2);
+  scheduleSave();
+  renderStoreTabs();
+  if (activeId === v) document.getElementById("curStoreTag").textContent = s.name;
+}
 function renderStoreTabs(){
   var box = document.getElementById("storeTabs");
   var q = searchQ;
@@ -404,7 +424,9 @@ function renderStoreTabs(){
       '<input class="store-name" value="' + esc(s.name) + '" size="' + size + '" title="点击修改店铺备注" ' +
       'onmousedown="event.stopPropagation()" onclick="event.stopPropagation()" ' +
       'oninput="renameStore(\'' + s.id + '\', this)">' +
-      '<span class="store-id">ID: ' + esc(s.id) + '</span>' +
+      '<input class="store-id" value="' + esc(s.id) + '" size="' + Math.max(3, s.id.length + 2) + '" title="点击修改店铺ID（字母/数字/下划线/中划线）" ' +
+      'onmousedown="event.stopPropagation()" onclick="event.stopPropagation()" ' +
+      'onchange="renameStoreId(\'' + s.id + '\', this)">' +
       '</div>' +
       '<button class="store-del" title="删除该店铺" onclick="removeStore(\'' + s.id + '\', event)">×</button>' +
       '</div>';
