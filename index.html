@@ -35,6 +35,12 @@
   .store-del:hover{background:var(--orange);color:#fff}
   .add-btn{background:var(--orange);color:#fff;border:none;border-radius:10px;padding:8px 16px;font-size:14px;font-weight:600;cursor:pointer;flex:none}
   .add-btn:hover{background:var(--orange-d)}
+  .store-search{flex:none;padding:7px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;outline:none;width:180px}
+  .store-search:focus{border-color:var(--orange)}
+  .store-count{font-size:11.5px;color:var(--sub);width:100%;margin-top:2px}
+  .store-info{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:0}
+  .store-id{font-size:10px;color:var(--sub);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2}
+  .store-empty{padding:8px 14px;color:var(--sub);font-size:13px}
   .store-hint{font-size:12px;color:var(--sub);width:100%;margin-top:2px}
   .tabs{display:flex;gap:8px;margin-bottom:14px}
   .tab{flex:1;text-align:center;padding:11px;border-radius:10px;background:var(--card);border:1.5px solid var(--line);cursor:pointer;font-size:15px;font-weight:600;color:var(--sub)}
@@ -85,7 +91,9 @@
   <!-- 店铺管理 -->
   <div class="card store-bar">
     <div class="store-tabs" id="storeTabs"></div>
+    <input class="store-search" id="storeSearch" type="search" placeholder="搜索店铺名称或ID" title="输入名称或ID关键字，实时过滤店铺">
     <button class="add-btn" id="addStoreBtn">＋ 添加店铺</button>
+    <div class="store-count" id="storeCount"></div>
     <div class="store-hint">点击店铺名称可直接修改备注；点名称旁的 × 删除该店。数据自动保存在网页同目录的 stores.json 文件中（方便群晖 Web Station 直接部署）；服务器不可写时自动降级为浏览器本地保存。</div>
     <div class="store-hint" id="saveHint" style="color:var(--teal);font-weight:600"></div>
   </div>
@@ -221,6 +229,7 @@ function newStore(name){
 }
 
 var stores = [], activeId = null;
+var searchQ = "";      // 店铺搜索关键字（名称或ID）
 
 function sanitizeStore(s){
   var d = defaultParams(), u = defaultUI();
@@ -313,18 +322,29 @@ function renameStore(id, input){
 }
 function renderStoreTabs(){
   var box = document.getElementById("storeTabs");
+  var q = searchQ;
+  var list = q ? stores.filter(function(s){
+    return s.name.toLowerCase().indexOf(q) >= 0 || s.id.toLowerCase().indexOf(q) >= 0;
+  }) : stores;
+  var countEl = document.getElementById("storeCount");
+  if (countEl) countEl.textContent = q
+    ? ("共 " + stores.length + " 家店 · 命中 " + list.length + " 家")
+    : ("共 " + stores.length + " 家店");
   var html = "";
-  stores.forEach(function(s){
+  list.forEach(function(s){
     var on = s.id === activeId ? " on" : "";
     var size = Math.max(3, s.name.length + 2);
     html += '<div class="store-tab' + on + '" data-id="' + s.id + '" onclick="switchStore(\'' + s.id + '\')">' +
+      '<div class="store-info">' +
       '<input class="store-name" value="' + esc(s.name) + '" size="' + size + '" title="点击修改店铺备注" ' +
       'onmousedown="event.stopPropagation()" onclick="event.stopPropagation()" ' +
       'oninput="renameStore(\'' + s.id + '\', this)">' +
+      '<span class="store-id">ID: ' + esc(s.id) + '</span>' +
+      '</div>' +
       '<button class="store-del" title="删除该店铺" onclick="removeStore(\'' + s.id + '\', event)">×</button>' +
       '</div>';
   });
-  box.innerHTML = html;
+  box.innerHTML = html || '<div class="store-empty">没有匹配的店铺</div>';
 }
 
 // ---------- 参数面板（绑定到当前店铺） ----------
@@ -612,6 +632,7 @@ function bindInputs(){
   document.getElementById("fwdDist").addEventListener("change", function(){ activeStore().ui.fwdDist = this.value; scheduleSave(); refresh(); });
   document.getElementById("fwdTime").addEventListener("change", function(){ activeStore().ui.fwdTime = this.value; scheduleSave(); refresh(); });
   document.getElementById("addStoreBtn").addEventListener("click", addStore);
+  document.getElementById("storeSearch").addEventListener("input", function(){ searchQ = this.value.trim().toLowerCase(); renderStoreTabs(); });
 }
 
 loadStores().then(function(){
