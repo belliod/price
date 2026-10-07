@@ -308,7 +308,9 @@ function doSave(){
         return r.json().catch(function(){ return null; }).then(function(body){
           storageMode = "local"; localSave(payload);
           var err = (body && body.error) ? body.error : ("HTTP " + r.status);
-          setSaveHint("服务器保存失败(" + err + ")：请检查目录写入权限，已改用浏览器本地保存");
+          var hint = "服务器保存失败(" + err + ")：请检查目录写入权限，已改用浏览器本地保存";
+          if (body && body.msg) hint = "服务器保存失败(" + err + ")：" + body.msg + "，已改用浏览器本地保存";
+          setSaveHint(hint);
         });
       })
       .catch(function(){
