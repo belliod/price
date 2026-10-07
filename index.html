@@ -69,6 +69,10 @@
   .detail .row.hl{color:var(--orange-d);font-weight:700;border-top:1px solid var(--line);margin-top:4px;padding-top:5px}
   .none{text-align:center;color:var(--sub);font-size:13px;padding:20px 0;display:none}
   .params{background:#fbfcfe}
+  .store-id-row{display:flex;align-items:center;gap:8px;margin:2px 0 10px;font-size:13px;color:var(--sub)}
+  .store-id-row .lbl{flex:none}
+  .id-input{width:180px;padding:5px 8px;border:1px solid var(--line);border-radius:7px;font-size:13px;outline:none}
+  .id-input:focus{border-color:var(--orange)}
   .params .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-top:10px}
   .params .p{display:flex;flex-direction:column;gap:3px}
   .params .p label{font-size:12px;color:var(--sub)}
@@ -106,6 +110,7 @@
       <button class="mini-btn" onclick="resetParams()">恢复默认参数</button>
     </h2>
     <div class="hint">以下为本店的独立参数，改动任意一项即时全量重算，只影响本店。</div>
+    <div class="store-id-row"><span class="lbl">店铺ID</span><input class="id-input" id="curStoreIdInput" title="自定义店铺ID（字母/数字/下划线/中划线，全局唯一），仅内部使用，不影响标签显示" onchange="renameStoreId(activeId, this)"></div>
     <div class="grid" id="paramGrid"></div>
   </div>
 
@@ -424,9 +429,7 @@ function renderStoreTabs(){
       '<input class="store-name" value="' + esc(s.name) + '" size="' + size + '" title="点击修改店铺备注" ' +
       'onmousedown="event.stopPropagation()" onclick="event.stopPropagation()" ' +
       'oninput="renameStore(\'' + s.id + '\', this)">' +
-      '<input class="store-id" value="' + esc(s.id) + '" size="' + Math.max(3, s.id.length + 2) + '" title="点击修改店铺ID（字母/数字/下划线/中划线）" ' +
-      'onmousedown="event.stopPropagation()" onclick="event.stopPropagation()" ' +
-      'onchange="renameStoreId(\'' + s.id + '\', this)">' +
+
       '</div>' +
       '<button class="store-del" title="删除该店铺" onclick="removeStore(\'' + s.id + '\', event)">×</button>' +
       '</div>';
@@ -701,6 +704,7 @@ function activate(){
   document.getElementById("revTime").value = s.ui.revTime;
   document.getElementById("fwdDist").value = s.ui.fwdDist;
   document.getElementById("fwdTime").value = s.ui.fwdTime;
+  document.getElementById("curStoreIdInput").value = s.id;
   setMode(s.ui.mode);
 }
 
