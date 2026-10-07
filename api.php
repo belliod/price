@@ -10,6 +10,20 @@ header('Cache-Control: no-store');
 $file = __DIR__ . DIRECTORY_SEPARATOR . 'stores.json';
 $action = isset($_GET['action']) ? $_GET['action'] : 'load';
 
+if ($action === 'diag') {
+    // 存储诊断：返回 PHP 版本、目录是否可写、stores.json 是否存在
+    $tmp = $file . '.diag';
+    $canWrite = @file_put_contents($tmp, '') !== false;
+    if ($canWrite) @unlink($tmp);
+    echo json_encode(array(
+        'ok' => true,
+        'php' => PHP_VERSION,
+        'dirWritable' => $canWrite,
+        'storesExists' => is_file($file)
+    ), JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 if ($action === 'load') {
     if (is_file($file)) {
         echo file_get_contents($file);
@@ -41,13 +55,13 @@ if ($action === 'save') {
     $tmp = $file . '.tmp';
     if (@file_put_contents($tmp, $raw) === false) {
         http_response_code(500);
-        echo json_encode(array('ok' => false, 'error' => 'write_failed'), JSON_UNESCAPED_UNICODE);
+        echo json_encode(array('ok' => false, 'error' => 'write_failed', 'msg' => '目录不可写：请在 File Station 给本目录添加 http 用户写入权限'), JSON_UNESCAPED_UNICODE);
         exit;
     }
     if (!@rename($tmp, $file)) {
         @unlink($tmp);
         http_response_code(500);
-        echo json_encode(array('ok' => false, 'error' => 'rename_failed'), JSON_UNESCAPED_UNICODE);
+        echo json_encode(array('ok' => false, 'error' => 'rename_failed', 'msg' => '目录不可写：请在 File Station 给本目录添加 http 用户写入权限'), JSON_UNESCAPED_UNICODE);
         exit;
     }
     echo json_encode(array('ok' => true), JSON_UNESCAPED_UNICODE);

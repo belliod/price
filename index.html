@@ -96,6 +96,7 @@
     <div class="store-count" id="storeCount"></div>
     <div class="store-hint">点击店铺名称可直接修改备注；点名称旁的 × 删除该店。数据自动保存在网页同目录的 stores.json 文件中（方便群晖 Web Station 直接部署）；服务器不可写时自动降级为浏览器本地保存。</div>
     <div class="store-hint" id="saveHint" style="color:var(--teal);font-weight:600"></div>
+    <button class="mini-btn" id="diagBtn" style="margin-left:0">存储诊断</button>
   </div>
 
   <!-- 当前店铺参数 -->
@@ -189,7 +190,7 @@
     <div class="hint">快速估价用；精确值请在“到手价→原价”中输入。</div>
   </div>
 
-  <footer>规则来源：美团代理商城市服务费截图 · 参数全自定义 v3.0 · 数据存于网页同目录 stores.json · 群晖可直接部署 · 无需联网，双击即用</footer>
+  <footer>规则来源：美团代理商城市服务费截图 · 参数全自定义 v3.0 · 群晖 / Cloudflare Pages 均可部署 · 数据存于服务器存储 · 无需联网，双击即用</footer>
 </div>
 <script>
 // ============ 店铺参数定义（默认参考值，每家店各自一份） ============
@@ -210,7 +211,8 @@ var PARAM_DEFS = [
 ];
 var TIME_FEES = { "0": 0, "0.5": 0.5, "1": 1.0 };
 var STORE_KEY = "mt_calc_stores_v1";   // 服务器不可写时的降级备份（浏览器本地）
-var DATA_URL = "api.php";              // 与网页同目录的读写接口
+var DATA_URLS = ["/api", "api.php"];   // 数据接口候选：Cloudflare Pages Function → 群晖 PHP
+var DATA_URL = null;                   // 探测后确定的接口
 var storageMode = "server";            // server | local
 var saveTimer = null;
 
@@ -241,21 +243,48 @@ function sanitizeStore(s){
   if (!s.name) s.name = "店铺";
   return s;
 }
+function probeStorage(){
+  // 依次探测数据接口：/api（Cloudflare Pages Function）→ api.php（群晖 PHP）
+  var chain = DATA_URLS.slice(), idx = 0;
+  function tryNext(){
+    if (idx >= chain.length) return Promise.resolve(false);
+    var u = chain[idx++];
+    return fetch(u + "?action=diag&t=" + Date.now(), { cache: "no-store" })
+      .then(function(r){ return r.json().catch(function(){ return null; }); })
+      .then(function(d){ if (d && d.ok) { DATA_URL = u; storageMode = "server"; return true; } return tryNext(); })
+      .catch(function(){ return tryNext(); });
+  }
+  return tryNext();
+}
+
 function loadData(){
   return fetch(DATA_URL + "?action=load&t=" + Date.now(), { cache: "no-store" })
-    .then(function(r){ if (!r.ok) throw new Error("http" + r.status); return r.json(); })
-    .catch(function(){
+    .then(function(r){
+      if (!r.ok) throw { kind: "http", status: r.status };
+      return r.json().catch(function(){ throw { kind: "notjson" }; });
+    })
+    .catch(function(e){
       storageMode = "local";
-      try { return JSON.parse(localStorage.getItem(STORE_KEY)); } catch (e) { return null; }
+      if (e && e.kind === "http") setSaveHint("数据接口返回错误(HTTP " + e.status + ")，已改用浏览器本地保存");
+      else if (e && e.kind === "notjson") setSaveHint("数据接口未返回有效数据（可能未启用 PHP 或未部署 Pages Function），已改用浏览器本地保存");
+      else setSaveHint("无法连接数据接口，已改用浏览器本地保存");
+      try { return JSON.parse(localStorage.getItem(STORE_KEY)); } catch (e2) { return null; }
     });
 }
 function loadStores(){
-  return loadData().then(function(arr){
+  return probeStorage().then(function(ok){
+    if (!ok) {
+      storageMode = "local";
+      setSaveHint("未找到可用数据接口(/api 或 api.php)：群晖需启用 PHP、Cloudflare 需 Pages Functions；已改用浏览器本地保存");
+      try { return JSON.parse(localStorage.getItem(STORE_KEY)); } catch (e) { return null; }
+    }
+    return loadData();
+  }).then(function(arr){
     if (!arr || !arr.length) arr = [newStore("店铺 1")];
     arr = arr.map(sanitizeStore);
     stores = arr;
     activeId = stores[0].id;
-    scheduleSave();
+    if (storageMode === "server") scheduleSave();
   });
 }
 function setSaveHint(txt){
@@ -274,11 +303,45 @@ function doSave(){
   var payload = JSON.stringify(stores);
   if (storageMode === "server") {
     fetch(DATA_URL + "?action=save", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload })
-      .then(function(r){ if (r.ok) setSaveHint("已保存到网页同目录 stores.json"); else { storageMode = "local"; localSave(payload); } })
-      .catch(function(){ storageMode = "local"; localSave(payload); });
+      .then(function(r){
+        if (r.ok) { setSaveHint("数据已保存到服务器（群晖 stores.json / Cloudflare KV）"); return; }
+        return r.json().catch(function(){ return null; }).then(function(body){
+          storageMode = "local"; localSave(payload);
+          var err = (body && body.error) ? body.error : ("HTTP " + r.status);
+          setSaveHint("服务器保存失败(" + err + ")：请检查目录写入权限，已改用浏览器本地保存");
+        });
+      })
+      .catch(function(){
+        storageMode = "local"; localSave(payload);
+        setSaveHint("无法连接 api.php（未部署或路径不对），已改用浏览器本地保存");
+      });
   } else {
-    localSave(payload);
+    // 本地模式：启动探测时已提示存储方式，这里静默保存，避免覆盖探测/诊断提示
+    try { localStorage.setItem(STORE_KEY, payload); } catch (e) {}
+    var h = document.getElementById("saveHint");
+    if (h && !h.textContent) setSaveHint("数据已保存到浏览器本地（未启用服务器存储）");
   }
+}
+
+// 存储诊断：一键检查 PHP 与目录写入权限
+function runDiag(){
+  var btn = document.getElementById("diagBtn");
+  if (!btn) return;
+  if (!DATA_URL) { setSaveHint("当前未启用服务器存储（未找到 /api 或 api.php），请修复存储接口后再诊断"); return; }
+  var orig = btn.textContent;
+  btn.textContent = "检测中…"; btn.disabled = true;
+  fetch(DATA_URL + "?action=diag&t=" + Date.now(), { cache: "no-store" })
+    .then(function(r){ return r.json().catch(function(){ throw { kind: "notjson" }; }); })
+    .then(function(d){
+      if (!d || !d.ok) throw { kind: "diagfail", d: d };
+      setSaveHint("存储诊断：PHP " + d.php + " 正常，" + (d.dirWritable ? "目录可写 ✓" : "目录不可写 ✗（请给 Web Station 的 http 用户写入权限）") + "，stores.json " + (d.storesExists ? "已存在" : "尚未创建(首次保存自动生成)"));
+    })
+    .catch(function(e){
+      if (e && e.kind === "notjson") setSaveHint("存储诊断：api.php 未返回 JSON——很可能 Web Station 未启用 PHP，或没有部署 api.php");
+      else if (e && e.kind === "diagfail") setSaveHint("存储诊断：目录不可写（File Station → 属性 → 权限 → 给 http 用户读写权限）");
+      else setSaveHint("存储诊断：无法连接 api.php，请确认已部署且与 index.html 同目录");
+    })
+    .then(function(){ btn.textContent = orig; btn.disabled = false; });
 }
 function findStore(id){ for (var i = 0; i < stores.length; i++) if (stores[i].id === id) return stores[i]; return null; }
 function activeStore(){ return findStore(activeId) || stores[0]; }
@@ -633,6 +696,7 @@ function bindInputs(){
   document.getElementById("fwdTime").addEventListener("change", function(){ activeStore().ui.fwdTime = this.value; scheduleSave(); refresh(); });
   document.getElementById("addStoreBtn").addEventListener("click", addStore);
   document.getElementById("storeSearch").addEventListener("input", function(){ searchQ = this.value.trim().toLowerCase(); renderStoreTabs(); });
+  document.getElementById("diagBtn").addEventListener("click", runDiag);
 }
 
 loadStores().then(function(){
