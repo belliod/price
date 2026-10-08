@@ -32,6 +32,8 @@
   th{background:#fafafa;font-weight:600;position:sticky;top:0}
   td.input-cell{background:#fffbe6;padding:2px}
   td.auto-cell{background:#f3f4f6}
+  @keyframes flashBg{0%{background:#ffe9b3}60%{background:#fff4d6}100%{background:#f3f4f6}}
+  td.flash{animation:flashBg .8s ease 1}
   td.input-cell input{width:100%;min-width:72px;border:1px solid transparent;background:transparent;text-align:right;font-size:13px;padding:4px;outline:none;border-radius:5px}
   td.input-cell input:focus{border-color:var(--orange);background:#fff}
   tr:hover td{background-color:#fff8f0}
@@ -198,6 +200,7 @@ document.getElementById("rows").addEventListener("input", function(ev){
     document.getElementById("h_" + i).textContent = "—";
   }
   recalcTotal();
+  ["e_" + i, "f_" + i, "h_" + i].forEach(function(id){ var el = document.getElementById(id); el.classList.add("flash"); clearTimeout(el._ft); el._ft = setTimeout(function(){ el.classList.remove("flash"); }, 900); });
   var tip = document.getElementById("saveTip");
   tip.textContent = "已自动保存到浏览器本地";
 });
@@ -224,5 +227,6 @@ document.getElementById("feeMin").addEventListener("input", function(){ save(); 
 load();
 render();
 </script>
+<footer style="text-align:center;font-size:12px;color:#9ca3af;margin-top:14px">外卖订单收入计算表 · 网页版 v1.1（输入即联动重算，黄色格为手动填写项）</footer>
 </body>
 </html>
