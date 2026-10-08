@@ -102,7 +102,7 @@
     <input class="store-search" id="storeSearch" type="search" placeholder="搜索店铺名称或ID" title="输入名称或ID关键字，实时过滤店铺">
     <button class="add-btn" id="addStoreBtn">＋ 添加店铺</button>
     <div class="store-count" id="storeCount"></div>
-    <div class="store-hint">点击店铺名称可直接修改备注；点名称旁的 × 删除该店。数据自动保存在网页同目录的 stores.json 文件中（方便群晖 Web Station 直接部署）；服务器不可写时自动降级为浏览器本地保存。</div>
+    <div class="store-hint">点击店铺名称可直接修改备注；点名称旁的 × 删除该店。数据自动保存，刷新不丢失。</div>
     <div class="store-hint" id="saveHint" style="color:var(--teal);font-weight:600"></div>
     <button class="mini-btn" id="diagBtn" style="margin-left:0">存储诊断</button>
   </div>
@@ -199,7 +199,7 @@
     <div class="hint">快速估价用；精确值请在“到手价→原价”中输入。</div>
   </div>
 
-  <footer>规则来源：美团代理商城市服务费截图 · 参数全自定义 v3.0 · 群晖 / Cloudflare Pages 均可部署 · 数据存于服务器存储 · 无需联网，双击即用</footer>
+  
 </div>
 <script>
 // ============ 店铺参数定义（默认参考值，每家店各自一份） ============
@@ -313,7 +313,7 @@ function doSave(){
   if (storageMode === "server") {
     fetch(DATA_URL + "?action=save", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload })
       .then(function(r){
-        if (r.ok) { setSaveHint("数据已保存到服务器（群晖 stores.json / Cloudflare KV）"); return; }
+        if (r.ok) { setSaveHint("已保存"); return; }
         return r.json().catch(function(){ return null; }).then(function(body){
           storageMode = "local"; localSave(payload);
           var err = (body && body.error) ? body.error : ("HTTP " + r.status);
